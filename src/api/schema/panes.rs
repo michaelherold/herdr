@@ -39,6 +39,38 @@ crate::cli::projection::cli_params! {
     }
 }
 
+/// Whether agent notifications from a pane are delivered.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum PaneNotifications {
+    /// Follow the workspace setting.
+    #[default]
+    Default,
+    /// Deliver notifications even when the workspace is muted.
+    On,
+    /// Mute notifications from this pane.
+    Off,
+}
+
+impl PaneNotifications {
+    pub(crate) fn is_default(&self) -> bool {
+        *self == Self::Default
+    }
+}
+
+crate::cli::projection::cli_params! {
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct PaneNotificationsSetParams => PaneNotificationsProjection {
+        pub pane_id: String => binding::input_target(),
+        pub notifications: PaneNotifications => Field::new(PaneNotifications::Default)
+            .input(Input::flag("on", |slot, _| { *slot = PaneNotifications::On; Ok(()) }).help("Notify even when the workspace is muted"))
+            .input(Input::flag("off", |slot, _| { *slot = PaneNotifications::Off; Ok(()) }).help("Mute notifications from this pane"))
+            .input(Input::flag("default", |slot, _| { *slot = PaneNotifications::Default; Ok(()) }).help("Follow the workspace setting")),
+    }
+}
+
 crate::cli::projection::cli_params! {
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
     pub struct PaneInputSetParams => PaneInputProjection {
@@ -530,6 +562,8 @@ pub struct PaneInfo {
     pub agent_session: Option<AgentSessionInfo>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scroll: Option<PaneScrollInfo>,
+    #[serde(default, skip_serializing_if = "PaneNotifications::is_default")]
+    pub notifications: PaneNotifications,
     pub revision: u64,
 }
 

@@ -2,8 +2,9 @@ use std::path::PathBuf;
 
 use crate::api::schema::{
     EventData, EventEnvelope, EventKind, ResponseResult, WorkspaceCloseParams,
-    WorkspaceCreateParams, WorkspaceMoveBlockParams, WorkspaceMoveParams, WorkspaceRenameParams,
-    WorkspaceReportMetadataParams, WorkspaceTarget,
+    WorkspaceCreateParams, WorkspaceMoveBlockParams, WorkspaceMoveParams,
+    WorkspaceNotificationsSetParams, WorkspaceRenameParams, WorkspaceReportMetadataParams,
+    WorkspaceTarget,
 };
 use crate::app::App;
 
@@ -122,6 +123,31 @@ impl App {
                 label: params.label,
             },
         });
+
+        encode_success(
+            id,
+            ResponseResult::WorkspaceInfo {
+                workspace: self.workspace_info(index),
+            },
+        )
+    }
+
+    pub(super) fn handle_workspace_notifications_set(
+        &mut self,
+        id: String,
+        params: WorkspaceNotificationsSetParams,
+    ) -> String {
+        let Some(index) = self.parse_workspace_id(&params.workspace_id) else {
+            return workspace_not_found(id, &params.workspace_id);
+        };
+        let Some(ws) = self.state.workspaces.get_mut(index) else {
+            return workspace_not_found(id, &params.workspace_id);
+        };
+        if ws.notifications != params.notifications {
+            ws.notifications = params.notifications;
+            self.schedule_session_save();
+            self.emit_workspace_updated(index);
+        }
 
         encode_success(
             id,

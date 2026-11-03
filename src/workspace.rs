@@ -194,6 +194,8 @@ pub struct Workspace {
     pub(crate) cached_git_space: Option<GitSpaceMetadata>,
     /// Explicit Herdr-managed worktree grouping provenance.
     pub worktree_space: Option<WorktreeSpaceMembership>,
+    /// Agent notification policy for panes that follow the workspace.
+    pub notifications: crate::api::schema::WorkspaceNotifications,
     pub(crate) metadata_tokens: crate::metadata_tokens::MetadataTokens,
     pub(crate) metadata_token_sequences: HashMap<String, u64>,
     /// Public pane numbers within this workspace. Closed pane numbers are not reused.
@@ -260,6 +262,7 @@ impl Workspace {
             cached_git_ahead_behind: None,
             cached_git_space,
             worktree_space: None,
+            notifications: Default::default(),
             metadata_tokens: crate::metadata_tokens::MetadataTokens::default(),
             metadata_token_sequences: HashMap::new(),
             public_pane_numbers,
@@ -412,6 +415,7 @@ impl Workspace {
                 cached_git_ahead_behind: None,
                 cached_git_space,
                 worktree_space: None,
+                notifications: Default::default(),
                 metadata_tokens: crate::metadata_tokens::MetadataTokens::default(),
                 metadata_token_sequences: HashMap::new(),
                 public_pane_numbers,
@@ -1094,6 +1098,19 @@ impl Workspace {
         self.tabs.iter().find_map(|tab| tab.panes.get(&pane_id))
     }
 
+    /// Whether the pane's setting, or the workspace's when the pane follows it,
+    /// mutes agent toasts and sounds from this pane.
+    pub(crate) fn agent_notifications_muted(&self, pane_id: PaneId) -> bool {
+        use crate::api::schema::{PaneNotifications, WorkspaceNotifications};
+        match self.pane_state(pane_id).map(|pane| pane.notifications) {
+            Some(PaneNotifications::Off) => true,
+            Some(PaneNotifications::On) => false,
+            Some(PaneNotifications::Default) | None => {
+                self.notifications == WorkspaceNotifications::Off
+            }
+        }
+    }
+
     pub fn pane_state_mut(&mut self, pane_id: PaneId) -> Option<&mut PaneState> {
         self.tabs
             .iter_mut()
@@ -1201,6 +1218,7 @@ impl Workspace {
             cached_git_ahead_behind: None,
             cached_git_space: None,
             worktree_space: None,
+            notifications: Default::default(),
             metadata_tokens: crate::metadata_tokens::MetadataTokens::default(),
             metadata_token_sequences: HashMap::new(),
             public_pane_numbers,

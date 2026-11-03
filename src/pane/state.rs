@@ -10,6 +10,8 @@ pub struct PaneState {
     pub seen: bool,
     /// Whether unmodified right-click gestures should be forwarded to the pane application.
     pub right_click_passthrough: bool,
+    /// Agent notification policy; `Default` follows the workspace.
+    pub notifications: crate::api::schema::PaneNotifications,
 }
 
 impl PaneState {
@@ -18,6 +20,7 @@ impl PaneState {
             attached_terminal_id,
             seen: true,
             right_click_passthrough: false,
+            notifications: crate::api::schema::PaneNotifications::Default,
         }
     }
 }

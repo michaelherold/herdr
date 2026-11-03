@@ -3173,6 +3173,7 @@ impl HeadlessServer {
             if new_state == *prev_state
                 || (new_state == crate::detect::AgentState::Idle
                     && terminal_after.last_agent_completion_seq.is_none())
+                || self.agent_notifications_muted(*pane_id)
             {
                 continue;
             }

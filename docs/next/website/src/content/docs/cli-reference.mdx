@@ -161,6 +161,7 @@ herdr workspace get <workspace_id>
 herdr workspace focus <workspace_id>
 herdr workspace rename <workspace_id> <label>
 herdr workspace report-metadata <workspace_id> --source ID [--token NAME=VALUE] [--clear-token NAME] [--seq N] [--ttl-ms N]
+herdr workspace notifications <workspace_id> --on|--off
 herdr workspace close <workspace_id> [--group]
 ```
 
@@ -219,6 +220,7 @@ herdr pane resize --direction left|right|up|down [--amount FLOAT] [--pane ID|--c
 herdr pane zoom [<pane_id>|--pane ID|--current] [--toggle|--on|--off]
 herdr pane rename <pane_id> <label>|--clear
 herdr pane input [<pane_id>|--pane ID|--current] --right-click herdr|pane
+herdr pane notifications [<pane_id>|--pane ID|--current] --on|--off|--default
 herdr pane split [<pane_id>|--pane ID|--current] --direction right|down [--ratio FLOAT] [--cwd PATH] [--env KEY=VALUE] [--right-click herdr|pane] [--focus] [--no-focus]
 herdr pane swap --direction left|right|up|down [--pane ID|--current]
 herdr pane swap --source-pane ID --target-pane ID
@@ -239,6 +241,17 @@ The split response exposes the new pane ID as `.result.pane.pane_id`.
 mouse-reporting pane application. `herdr` restores the default pane menu.
 Right-clicking the pane frame still opens Herdr's menu. `pane split
 --right-click pane` applies the same policy to the new pane at creation.
+
+`pane notifications --off` and `workspace notifications --off` mute agent
+notifications: no toast and no finished or needs-attention sound when an agent
+in that pane or workspace finishes or needs input. The agent state still updates
+in the sidebar and in `pane get`, and `herdr notification show` still shows. A
+pane setting wins over its workspace: `--default` follows the workspace, and
+`--on` keeps a pane notifying inside a muted workspace. Panes and tabs created
+later in a muted workspace follow it. A pane moved to another workspace keeps
+its own setting and otherwise follows its new workspace. Both settings survive
+session restore. `pane get`, `pane list`, `workspace get`, and `workspace list`
+include `notifications` only when it is not the default.
 
 After `pane move`, use `.result.move_result.pane.pane_id` for later commands. A cross-workspace move changes the workspace-qualified pane ID; the prior value remains at `.result.move_result.previous_pane_id`. The running process keeps its launch-time `HERDR_PANE_ID`, `HERDR_TAB_ID`, and `HERDR_WORKSPACE_ID`; Herdr retains the old pane ID as an alias for that terminal, so pane commands using `--current` still resolve it. A live agent name follows the terminal and continues to resolve after the move.
 

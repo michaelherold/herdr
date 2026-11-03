@@ -805,6 +805,9 @@
                 "null"
               ]
             },
+            "notifications": {
+              "$ref": "#/schemas/event/$defs/PaneNotifications"
+            },
             "pane_id": {
               "type": "string"
             },
@@ -1003,6 +1006,26 @@
           ],
           "type": "object"
         },
+        "PaneNotifications": {
+          "description": "Whether agent notifications from a pane are delivered.",
+          "oneOf": [
+            {
+              "const": "default",
+              "description": "Follow the workspace setting.",
+              "type": "string"
+            },
+            {
+              "const": "on",
+              "description": "Deliver notifications even when the workspace is muted.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from this pane.",
+              "type": "string"
+            }
+          ]
+        },
         "PaneScrollInfo": {
           "properties": {
             "max_offset_from_bottom": {
@@ -1088,6 +1111,9 @@
             "label": {
               "type": "string"
             },
+            "notifications": {
+              "$ref": "#/schemas/event/$defs/WorkspaceNotifications"
+            },
             "number": {
               "format": "uint",
               "minimum": 0,
@@ -1138,6 +1164,21 @@
             "agent_status"
           ],
           "type": "object"
+        },
+        "WorkspaceNotifications": {
+          "description": "Whether agent notifications from a workspace's panes are delivered.",
+          "oneOf": [
+            {
+              "const": "on",
+              "description": "Deliver notifications under the global settings.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from panes that follow the workspace setting.",
+              "type": "string"
+            }
+          ]
         },
         "WorkspaceWorktreeInfo": {
           "properties": {
@@ -2797,6 +2838,41 @@
           ],
           "type": "object"
         },
+        "PaneNotifications": {
+          "description": "Whether agent notifications from a pane are delivered.",
+          "oneOf": [
+            {
+              "const": "default",
+              "description": "Follow the workspace setting.",
+              "type": "string"
+            },
+            {
+              "const": "on",
+              "description": "Deliver notifications even when the workspace is muted.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from this pane.",
+              "type": "string"
+            }
+          ]
+        },
+        "PaneNotificationsSetParams": {
+          "properties": {
+            "notifications": {
+              "$ref": "#/schemas/request/$defs/PaneNotifications"
+            },
+            "pane_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pane_id",
+            "notifications"
+          ],
+          "type": "object"
+        },
         "PaneProcessInfoParams": {
           "properties": {
             "pane_id": {
@@ -4451,6 +4527,36 @@
           ],
           "type": "object"
         },
+        "WorkspaceNotifications": {
+          "description": "Whether agent notifications from a workspace's panes are delivered.",
+          "oneOf": [
+            {
+              "const": "on",
+              "description": "Deliver notifications under the global settings.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from panes that follow the workspace setting.",
+              "type": "string"
+            }
+          ]
+        },
+        "WorkspaceNotificationsSetParams": {
+          "properties": {
+            "notifications": {
+              "$ref": "#/schemas/request/$defs/WorkspaceNotifications"
+            },
+            "workspace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "workspace_id",
+            "notifications"
+          ],
+          "type": "object"
+        },
         "WorkspaceRenameParams": {
           "properties": {
             "label": {
@@ -5041,6 +5147,22 @@
             },
             "params": {
               "$ref": "#/schemas/request/$defs/WorkspaceReportMetadataParams"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "workspace.notifications.set",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/schemas/request/$defs/WorkspaceNotificationsSetParams"
             }
           },
           "required": [
@@ -5809,6 +5931,22 @@
             },
             "params": {
               "$ref": "#/schemas/request/$defs/PaneInputSetParams"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "pane.notifications.set",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/schemas/request/$defs/PaneNotificationsSetParams"
             }
           },
           "required": [
@@ -7913,6 +8051,9 @@
                 "null"
               ]
             },
+            "notifications": {
+              "$ref": "#/schemas/success_response/$defs/PaneNotifications"
+            },
             "pane_id": {
               "type": "string"
             },
@@ -8258,6 +8399,26 @@
             "layout"
           ],
           "type": "object"
+        },
+        "PaneNotifications": {
+          "description": "Whether agent notifications from a pane are delivered.",
+          "oneOf": [
+            {
+              "const": "default",
+              "description": "Follow the workspace setting.",
+              "type": "string"
+            },
+            {
+              "const": "on",
+              "description": "Deliver notifications even when the workspace is muted.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from this pane.",
+              "type": "string"
+            }
+          ]
         },
         "PaneProcessInfo": {
           "properties": {
@@ -10587,6 +10748,9 @@
             "label": {
               "type": "string"
             },
+            "notifications": {
+              "$ref": "#/schemas/success_response/$defs/WorkspaceNotifications"
+            },
             "number": {
               "format": "uint",
               "minimum": 0,
@@ -10637,6 +10801,21 @@
             "agent_status"
           ],
           "type": "object"
+        },
+        "WorkspaceNotifications": {
+          "description": "Whether agent notifications from a workspace's panes are delivered.",
+          "oneOf": [
+            {
+              "const": "on",
+              "description": "Deliver notifications under the global settings.",
+              "type": "string"
+            },
+            {
+              "const": "off",
+              "description": "Mute notifications from panes that follow the workspace setting.",
+              "type": "string"
+            }
+          ]
         },
         "WorkspaceWorktreeInfo": {
           "properties": {

@@ -100,10 +100,10 @@ Raw socket method names use dot notation:
 | Notification | `notification.show` |
 | Client | `client.window_title.set`, `client.window_title.clear` |
 | Session | `session.snapshot` |
-| Workspace | `workspace.create`, `workspace.list`, `workspace.get`, `workspace.focus`, `workspace.rename`, `workspace.move`, `workspace.move_block`, `workspace.report_metadata`, `workspace.close` |
+| Workspace | `workspace.create`, `workspace.list`, `workspace.get`, `workspace.focus`, `workspace.rename`, `workspace.move`, `workspace.move_block`, `workspace.report_metadata`, `workspace.notifications.set`, `workspace.close` |
 | Worktree | `worktree.list`, `worktree.create`, `worktree.open`, `worktree.remove` |
 | Tab | `tab.create`, `tab.list`, `tab.get`, `tab.focus`, `tab.rename`, `tab.move`, `tab.close` |
-| Pane | `pane.split`, `pane.swap`, `pane.move`, `pane.zoom`, `pane.layout`, `pane.process_info`, `pane.neighbor`, `pane.edges`, `pane.focus_direction`, `pane.resize`, `pane.list`, `pane.current`, `pane.get`, `pane.rename`, `pane.send_text`, `pane.send_keys`, `pane.send_input`, `pane.read`, `pane.report_agent`, `pane.report_agent_session`, `pane.report_metadata`, `pane.clear_agent_authority`, `pane.release_agent`, `pane.close`, `pane.wait_for_output` |
+| Pane | `pane.split`, `pane.swap`, `pane.move`, `pane.zoom`, `pane.layout`, `pane.process_info`, `pane.neighbor`, `pane.edges`, `pane.focus_direction`, `pane.resize`, `pane.list`, `pane.current`, `pane.get`, `pane.rename`, `pane.notifications.set`, `pane.send_text`, `pane.send_keys`, `pane.send_input`, `pane.read`, `pane.report_agent`, `pane.report_agent_session`, `pane.report_metadata`, `pane.clear_agent_authority`, `pane.release_agent`, `pane.close`, `pane.wait_for_output` |
 | Popup | `popup.close` |
 | Layout | `layout.export`, `layout.apply`, `layout.set_split_ratio` |
 | Agent | `agent.list`, `agent.get`, `agent.read`, `agent.explain`, `agent.send_keys`, `agent.prompt`, `agent.wait`, `agent.rename`, `agent.focus`, `agent.start`, `agent.view.set`, `agent.view.clear` |
@@ -149,6 +149,8 @@ On macOS, `pane.send_input` (used by `pane run`) and `agent.start` check the ter
 {"id":"req_resize","method":"pane.resize","params":{"pane_id":"w1:p1","direction":"right","amount":0.1}}
 {"id":"req_zoom","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"toggle"}}
 {"id":"req_input","method":"pane.input.set","params":{"pane_id":"w1:p1","right_click":"pane"}}
+{"id":"req_mute","method":"pane.notifications.set","params":{"pane_id":"w1:p1","notifications":"off"}}
+{"id":"req_mute_ws","method":"workspace.notifications.set","params":{"workspace_id":"w1","notifications":"off"}}
 {"id":"req_split","method":"pane.split","params":{"direction":"right","ratio":0.333,"right_click":"pane","env":{"HERDR_ROLE":"tests"}}}
 {"id":"req_process","method":"pane.process_info","params":{"pane_id":"w1:p1"}}
 ```
@@ -163,6 +165,16 @@ when the application requests terminal mouse reporting; otherwise Herdr falls
 back to its pane menu. Right-clicking the pane frame always opens Herdr's menu.
 `pane.split` accepts the same optional `right_click` value for the newly created
 pane.
+
+`pane.notifications.set` sets `notifications` to `default`, `on`, or `off` for
+one pane, and `workspace.notifications.set` sets it to `on` or `off` for a
+workspace. Muting stops the toast and the finished or needs-attention sound for
+agents in that pane or workspace; agent state and status events still update,
+and `notification.show` is unaffected. A pane's `on` or `off` overrides its
+workspace, and `default` follows it. Both return the updated `PaneInfo` or
+`WorkspaceInfo`, emit `pane.updated` or `workspace.updated` when the value
+changes, and persist across session restore. `PaneInfo` and `WorkspaceInfo`
+include `notifications` only when it differs from the default.
 
 `PaneInfo` includes `scroll` when terminal scroll metrics are available:
 

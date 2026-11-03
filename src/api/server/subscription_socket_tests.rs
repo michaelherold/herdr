@@ -237,6 +237,7 @@ fn reply_to_probe(request: ApiRequestMessage) {
                 agent_session: None,
                 scroll: None,
                 revision: 0,
+                notifications: Default::default(),
             },
         },
         Method::PaneRead(_) => ResponseResult::PaneRead {

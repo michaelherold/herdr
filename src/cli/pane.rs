@@ -327,6 +327,13 @@ mod tests {
                 json!({"pane_id": "pane", "right_click": "herdr"}),
             ),
             (
+                "notifications",
+                vec!["pane", "--off"],
+                "cli:pane:notifications:set",
+                "pane.notifications.set",
+                json!({"pane_id": "pane", "notifications": "off"}),
+            ),
+            (
                 "split",
                 vec!["pane", "--direction", "down"],
                 "cli:pane:split",
@@ -642,6 +649,19 @@ mod tests {
             &["--pane", "pane-a", "--current", "--right-click", "pane"]
         )
         .is_err());
+    }
+
+    #[test]
+    fn parse_pane_notifications_requires_one_mode_and_a_selector() {
+        for (flag, mode) in [("--on", "on"), ("--off", "off"), ("--default", "default")] {
+            let json =
+                serde_json::to_value(request("notifications", &["--pane", "p", flag]).unwrap())
+                    .unwrap();
+            assert_eq!(json["params"]["notifications"], mode);
+        }
+        assert!(request("notifications", &["pane-a"]).is_err());
+        assert!(request("notifications", &["pane-a", "--on", "--off"]).is_err());
+        assert!(request("notifications", &["--off"]).is_err());
     }
 
     #[test]
@@ -1017,6 +1037,7 @@ mod tests {
             "run",
             "rename",
             "input",
+            "notifications",
             "move",
             "report-agent",
             "report-agent-session",

@@ -1953,6 +1953,10 @@ impl AppState {
         {
             return None;
         }
+        // Checked at delivery so a mute set during the toast delay still applies.
+        if self.workspaces[ws_idx].agent_notifications_muted(pane_id) {
+            return None;
+        }
 
         let is_active_tab = self.pane_is_in_active_tab(ws_idx, pane_id);
         let suppress_active_tab_notifications =
@@ -3586,6 +3590,73 @@ mod tests {
 
         assert!(state.drain_due_agent_notifications(deadline).is_empty());
         assert!(state.toast.is_none());
+    }
+
+    fn background_blocked(state: &mut AppState, pane_id: PaneId) {
+        state.handle_app_event(AppEvent::StateChanged {
+            pane_id,
+            agent: Some(Agent::Pi),
+            state: AgentState::Blocked,
+            visible_blocker: false,
+            visible_working: false,
+            process_exited: false,
+            observed_at: std::time::Instant::now(),
+        });
+    }
+
+    #[test]
+    fn notification_mutes_resolve_pane_then_workspace() {
+        use crate::api::schema::{PaneNotifications, WorkspaceNotifications};
+
+        for (workspace, pane, toast) in [
+            (WorkspaceNotifications::On, PaneNotifications::Default, true),
+            (WorkspaceNotifications::On, PaneNotifications::Off, false),
+            (
+                WorkspaceNotifications::Off,
+                PaneNotifications::Default,
+                false,
+            ),
+            (WorkspaceNotifications::Off, PaneNotifications::On, true),
+        ] {
+            let mut state = app_with_workspaces(&["active", "background"]);
+            state.active = Some(0);
+            state.toast_config.delivery = crate::config::ToastDelivery::Herdr;
+            let bg_pane_id = *state.workspaces[1].panes.keys().next().unwrap();
+            state.workspaces[1].notifications = workspace;
+            state.workspaces[1]
+                .pane_state_mut(bg_pane_id)
+                .unwrap()
+                .notifications = pane;
+
+            background_blocked(&mut state, bg_pane_id);
+
+            assert_eq!(state.toast.is_some(), toast, "{workspace:?} {pane:?}");
+            // Muting changes delivery only; the pane still records the attention state.
+            assert_eq!(
+                state.terminals[&state.workspaces[1].panes[&bg_pane_id].attached_terminal_id].state,
+                AgentState::Blocked
+            );
+        }
+    }
+
+    #[test]
+    fn delayed_notification_is_dropped_when_pane_is_muted_before_deadline() {
+        let mut state = app_with_workspaces(&["active", "background"]);
+        state.active = Some(0);
+        state.toast_config.delivery = crate::config::ToastDelivery::Herdr;
+        state.toast_config.delay_seconds = 1;
+        let bg_pane_id = *state.workspaces[1].panes.keys().next().unwrap();
+
+        background_blocked(&mut state, bg_pane_id);
+        let deadline = state.next_pending_agent_notification_deadline().unwrap();
+        state.workspaces[1]
+            .pane_state_mut(bg_pane_id)
+            .unwrap()
+            .notifications = crate::api::schema::PaneNotifications::Off;
+
+        assert!(state.drain_due_agent_notifications(deadline).is_empty());
+        assert!(state.toast.is_none());
+        assert!(state.pending_agent_notifications.is_empty());
     }
 
     #[test]

@@ -4,7 +4,7 @@ use clap::{Arg, ArgMatches, Command};
 
 use crate::api::schema::workspaces::{
     WorkspaceCloseProjection, WorkspaceCreateProjection, WorkspaceMetadataProjection,
-    WorkspaceRenameProjection,
+    WorkspaceNotificationsProjection, WorkspaceRenameProjection,
 };
 use crate::api::schema::{EmptyParams, Method, Request, WorkspaceTarget};
 
@@ -121,11 +121,19 @@ impl Leaf {
     }
 
     fn command(&self) -> Command {
-        super::projection::command(self.name, (self.arguments)()).about(self.about)
+        let command = super::projection::command(self.name, (self.arguments)()).about(self.about);
+        match self.name {
+            "notifications" => command.group(
+                clap::ArgGroup::new("mode")
+                    .args(["on", "off"])
+                    .required(true),
+            ),
+            _ => command,
+        }
     }
 }
 
-pub(crate) const LEAVES: [Leaf; 7] = [
+pub(crate) const LEAVES: [Leaf; 8] = [
     Leaf {
         name: "list",
         about: "List workspaces",
@@ -182,6 +190,17 @@ pub(crate) const LEAVES: [Leaf; 7] = [
         arguments: WorkspaceMetadataProjection::arguments,
         method: |matches| {
             WorkspaceMetadataProjection::from_matches(matches).map(Method::WorkspaceReportMetadata)
+        },
+    },
+    Leaf {
+        name: "notifications",
+        about: "Mute or unmute agent notifications from a workspace",
+        id: "cli:workspace:notifications:set",
+        quiet: false,
+        arguments: WorkspaceNotificationsProjection::arguments,
+        method: |matches| {
+            WorkspaceNotificationsProjection::from_matches(matches)
+                .map(Method::WorkspaceNotificationsSet)
         },
     },
     Leaf {
@@ -312,6 +331,25 @@ mod tests {
         assert!(
             matches!(request("report-metadata", &["id", "--source", "valid"]), Err(ParseError::Usage(message)) if message == "missing token to set or clear")
         );
+    }
+
+    #[test]
+    fn workspace_projection_sets_notifications() {
+        assert_eq!(
+            serde_json::to_value(request("notifications", &["w_1", "--off"]).unwrap()).unwrap(),
+            serde_json::json!({
+                "id": "cli:workspace:notifications:set", "method": "workspace.notifications.set",
+                "params": {"workspace_id": "w_1", "notifications": "off"}
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(request("notifications", &["w_1", "--on"]).unwrap()).unwrap()
+                ["params"]["notifications"],
+            "on"
+        );
+        assert!(request("notifications", &["w_1"]).is_err());
+        assert!(request("notifications", &["w_1", "--on", "--off"]).is_err());
+        assert!(request("notifications", &["--off"]).is_err());
     }
 
     #[test]

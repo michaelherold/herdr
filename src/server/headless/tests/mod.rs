@@ -8099,6 +8099,153 @@ fn completion_guard_api_startup_blocker_respects_suppression() {
 }
 
 #[test]
+fn notification_mutes_suppress_agent_toasts_and_sounds_for_clients() {
+    use crate::detect::AgentState;
+    use api::schema::{
+        Method, PaneAgentState, PaneNotifications, PaneNotificationsSetParams,
+        WorkspaceNotifications, WorkspaceNotificationsSetParams,
+    };
+
+    #[derive(Debug, Clone, Copy)]
+    enum Source {
+        Api,
+        Detection,
+        Hook,
+    }
+
+    let cases = [
+        (WorkspaceNotifications::On, PaneNotifications::Default, true),
+        (WorkspaceNotifications::On, PaneNotifications::Off, false),
+        (
+            WorkspaceNotifications::Off,
+            PaneNotifications::Default,
+            false,
+        ),
+        (WorkspaceNotifications::Off, PaneNotifications::On, true),
+    ];
+    for source in [Source::Api, Source::Detection, Source::Hook] {
+        for (workspace, pane, delivered) in cases {
+            let (writer, control_rx, _render_rx) = test_client_writer();
+            let (mut server, pane_id) = completion_guard_server(writer);
+            server.foreground_client_id = Some(1);
+            server.sync_foreground_client_state();
+            server.app.state.toast_config.delivery = crate::config::ToastDelivery::System;
+            server.handle_internal_event_with_forwarding(AppEvent::AgentProcessDetected {
+                pane_id,
+                agent: crate::detect::Agent::Pi,
+                observed_at: Instant::now(),
+            });
+            let public_pane_id = server.app.public_pane_id(0, pane_id).unwrap();
+            let workspace_id = server.app.public_workspace_id(0);
+            completion_guard_api_report(
+                &mut server,
+                Method::WorkspaceNotificationsSet(WorkspaceNotificationsSetParams {
+                    workspace_id,
+                    notifications: workspace,
+                }),
+            );
+            completion_guard_api_report(
+                &mut server,
+                Method::PaneNotificationsSet(PaneNotificationsSetParams {
+                    pane_id: public_pane_id.clone(),
+                    notifications: pane,
+                }),
+            );
+            let states = [
+                (PaneAgentState::Working, AgentState::Working),
+                (PaneAgentState::Blocked, AgentState::Blocked),
+                (PaneAgentState::Working, AgentState::Working),
+                (PaneAgentState::Idle, AgentState::Idle),
+            ];
+            for (seq, (api_state, state)) in states.into_iter().enumerate() {
+                let seq = seq as u64 + 1;
+                match source {
+                    Source::Api => completion_guard_api_report(
+                        &mut server,
+                        Method::PaneReportAgent(api::schema::PaneReportAgentParams {
+                            pane_id: public_pane_id.clone(),
+                            source: "custom:pi".into(),
+                            agent: "pi".into(),
+                            state: api_state,
+                            message: None,
+                            seq: Some(seq),
+                            agent_session_id: None,
+                            agent_session_path: None,
+                            resume_argv: None,
+                        }),
+                    ),
+                    Source::Detection => {
+                        server.handle_internal_event_with_forwarding(AppEvent::StateChanged {
+                            pane_id,
+                            agent: Some(crate::detect::Agent::Pi),
+                            state,
+                            visible_blocker: state == AgentState::Blocked,
+                            visible_working: state == AgentState::Working,
+                            process_exited: false,
+                            observed_at: Instant::now(),
+                        });
+                    }
+                    Source::Hook => {
+                        server.handle_internal_event_with_forwarding(AppEvent::HookStateReported {
+                            pane_id,
+                            source: "custom:pi".into(),
+                            agent_label: "pi".into(),
+                            state,
+                            message: None,
+                            seq: Some(seq),
+                            session_ref: None,
+                        });
+                    }
+                }
+            }
+
+            server.send_to_client(
+                1,
+                ServerMessage::EndpointControl {
+                    kind: "test.completion-barrier".into(),
+                    data: String::new(),
+                },
+            );
+            let mut semantic = Vec::new();
+            let mut notify = Vec::new();
+            loop {
+                match read_server_message(
+                    control_rx
+                        .recv_timeout(Duration::from_secs(1))
+                        .expect("notification barrier"),
+                ) {
+                    ServerMessage::EndpointControl { kind, .. }
+                        if kind == "test.completion-barrier" =>
+                    {
+                        break
+                    }
+                    ServerMessage::SemanticNotification(notification) => {
+                        semantic.push(notification.kind)
+                    }
+                    ServerMessage::Notify { kind, .. } => notify.push(kind),
+                    _ => {}
+                }
+            }
+
+            let case = format!("{source:?} {workspace:?} {pane:?}: {semantic:?} {notify:?}");
+            if delivered {
+                assert!(
+                    semantic.contains(&protocol::SemanticNotificationKind::NeedsAttention),
+                    "{case}"
+                );
+                assert!(notify.contains(&protocol::NotifyKind::Sound), "{case}");
+                assert!(
+                    notify.contains(&protocol::NotifyKind::SystemToast),
+                    "{case}"
+                );
+            } else {
+                assert!(semantic.is_empty() && notify.is_empty(), "{case}");
+            }
+        }
+    }
+}
+
+#[test]
 fn completion_guard_api_session_replacement_does_not_notify_finished() {
     use crate::agent_resume::{AgentSessionRef, PersistedAgentSession};
     use crate::detect::{Agent, AgentState};

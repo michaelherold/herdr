@@ -200,6 +200,7 @@ fn pane_scroll_result(
                 viewport_rows,
             }),
             revision: 0,
+            notifications: Default::default(),
         },
     }
 }

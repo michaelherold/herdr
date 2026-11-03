@@ -1082,6 +1082,9 @@ impl App {
             Method::WorkspaceReportMetadata(params) => {
                 return self.handle_workspace_report_metadata(request.id, params);
             }
+            Method::WorkspaceNotificationsSet(params) => {
+                return self.handle_workspace_notifications_set(request.id, params);
+            }
             Method::WorkspaceClose(target) => {
                 return self.handle_workspace_close(request.id, target);
             }
@@ -1181,6 +1184,9 @@ impl App {
             Method::PaneGet(target) => return self.handle_pane_get(request.id, target),
             Method::PaneFocus(target) => return self.handle_pane_focus(request.id, target),
             Method::PaneInputSet(params) => return self.handle_pane_input_set(request.id, params),
+            Method::PaneNotificationsSet(params) => {
+                return self.handle_pane_notifications_set(request.id, params);
+            }
             Method::PaneLinkResolve(params) => {
                 return self.handle_pane_link_resolve(request.id, params);
             }

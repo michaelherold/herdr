@@ -361,6 +361,7 @@ impl App {
             tokens: terminal.metadata_tokens.values(),
             agent_session: terminal_agent_session_info(terminal),
             scroll: None,
+            notifications: pane.notifications,
             revision: terminal.revision,
         })
     }
@@ -409,6 +410,7 @@ impl App {
                     checkout_path: space.checkout_path.display().to_string(),
                     is_linked_worktree: space.is_linked_worktree,
                 }),
+            notifications: ws.notifications,
         }
     }
 }

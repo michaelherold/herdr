@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use ratatui::layout::Direction;
 use serde::{Deserialize, Serialize};
 
+use crate::api::schema::{PaneNotifications, WorkspaceNotifications};
 use crate::layout::Node;
 use crate::terminal::TerminalRuntimeRegistry;
 use crate::workspace::Workspace;
@@ -68,6 +69,8 @@ pub struct WorkspaceSnapshot {
     pub tabs: Vec<TabSnapshot>,
     #[serde(default)]
     pub active_tab: usize,
+    #[serde(default, skip_serializing_if = "WorkspaceNotifications::is_on")]
+    pub notifications: WorkspaceNotifications,
 }
 
 #[derive(Deserialize)]
@@ -111,6 +114,8 @@ pub struct PaneSnapshot {
     pub agent_resume: Option<PaneAgentResumeSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub launch_argv: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "PaneNotifications::is_default")]
+    pub notifications: PaneNotifications,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -175,6 +180,7 @@ impl From<LegacyWorkspaceSnapshot> for WorkspaceSnapshot {
             next_public_tab_number: 0,
             tabs: vec![tab],
             active_tab: 0,
+            notifications: Default::default(),
         }
     }
 }
@@ -317,6 +323,7 @@ fn capture_workspace(
         next_public_tab_number: ws.next_public_tab_number,
         tabs,
         active_tab: ws.active_tab,
+        notifications: ws.notifications,
     }
 }
 
@@ -388,6 +395,7 @@ fn capture_tab(
                 agent_session,
                 agent_resume,
                 launch_argv,
+                notifications: tab.panes[id].notifications,
             },
         );
     }
@@ -707,6 +715,7 @@ mod tests {
                 agent_session: None,
                 agent_resume: None,
                 launch_argv: None,
+                notifications: Default::default(),
             },
         );
         panes.insert(
@@ -719,6 +728,7 @@ mod tests {
                 agent_session: None,
                 agent_resume: None,
                 launch_argv: None,
+                notifications: Default::default(),
             },
         );
 
@@ -746,6 +756,7 @@ mod tests {
                     root_pane: Some(0),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,
@@ -952,6 +963,34 @@ mod tests {
         assert_eq!(
             snapshot.workspaces[0].worktree_space,
             state.workspaces[0].worktree_space
+        );
+    }
+
+    #[test]
+    fn capture_contract_tracks_notification_mutes_and_omits_defaults() {
+        use crate::api::schema::{PaneNotifications, WorkspaceNotifications};
+
+        let mut state = state_with_workspaces(&["main"]);
+        let unmuted = serde_json::to_string(&capture_from_state(&state)).unwrap();
+        assert!(!unmuted.contains("notifications"), "{unmuted}");
+
+        state.workspaces[0].notifications = WorkspaceNotifications::Off;
+        let pane_id = state.workspaces[0].tabs[0].root_pane;
+        state.workspaces[0]
+            .pane_state_mut(pane_id)
+            .unwrap()
+            .notifications = PaneNotifications::On;
+
+        let json = serde_json::to_string(&capture_from_state(&state)).unwrap();
+        let snapshot = parse_snapshot(&json).unwrap();
+
+        assert_eq!(
+            snapshot.workspaces[0].notifications,
+            WorkspaceNotifications::Off
+        );
+        assert_eq!(
+            snapshot.workspaces[0].tabs[0].panes[&pane_id.raw()].notifications,
+            PaneNotifications::On
         );
     }
 
@@ -1405,6 +1444,7 @@ mod tests {
                 agent_session: None,
                 agent_resume: None,
                 launch_argv: None,
+                notifications: Default::default(),
             },
         );
         panes.insert(
@@ -1419,6 +1459,7 @@ mod tests {
                 agent_session: None,
                 agent_resume: None,
                 launch_argv: None,
+                notifications: Default::default(),
             },
         );
 
@@ -1447,6 +1488,7 @@ mod tests {
                     root_pane: Some(0),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,

@@ -425,6 +425,7 @@ fn restore_workspace(
             cached_git_ahead_behind: None,
             cached_git_space: None,
             worktree_space: snap.worktree_space.clone(),
+            notifications: snap.notifications,
             metadata_tokens: crate::metadata_tokens::MetadataTokens::default(),
             metadata_token_sequences: HashMap::new(),
             public_pane_numbers,
@@ -767,6 +768,12 @@ fn restore_tab(
             "no panes could be restored for tab, dropping it"
         );
         return (None, failed_imports);
+    }
+
+    for (id, pane) in &mut panes {
+        if let Some(saved) = reverse_id_map.get(id).and_then(|old| snap.panes.get(old)) {
+            pane.notifications = saved.notifications;
+        }
     }
 
     let surviving: HashSet<PaneId> = panes.keys().copied().collect();
@@ -1554,6 +1561,7 @@ mod tests {
                             }),
                             agent_resume: None,
                             launch_argv: None,
+                            notifications: Default::default(),
                         },
                     )]),
                     zoomed: false,
@@ -1561,6 +1569,7 @@ mod tests {
                     root_pane: Some(0),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,
@@ -1636,6 +1645,7 @@ mod tests {
                                 agent_session: None,
                                 agent_resume: None,
                                 launch_argv: None,
+                                notifications: Default::default(),
                             },
                         ),
                         (
@@ -1648,6 +1658,7 @@ mod tests {
                                 agent_session: None,
                                 agent_resume: None,
                                 launch_argv: None,
+                                notifications: Default::default(),
                             },
                         ),
                     ]),
@@ -1656,6 +1667,7 @@ mod tests {
                     root_pane: Some(10),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,
@@ -1702,6 +1714,7 @@ mod tests {
                     agent_session: None,
                     agent_resume: None,
                     launch_argv: None,
+                    notifications: Default::default(),
                 },
             )
         };
@@ -1718,6 +1731,7 @@ mod tests {
             }),
             agent_resume: None,
             launch_argv: None,
+            notifications: Default::default(),
         };
         let snapshot = SessionSnapshot {
             version: super::super::snapshot::SNAPSHOT_VERSION,
@@ -1765,6 +1779,7 @@ mod tests {
                     },
                 ],
                 active_tab: 3,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,
@@ -1827,6 +1842,7 @@ mod tests {
                 root_pane: Some(10),
             }],
             active_tab: 0,
+            notifications: Default::default(),
         };
         let mut next_public_pane_number = 1;
 
@@ -1870,6 +1886,7 @@ mod tests {
                             }),
                             agent_resume: None,
                             launch_argv: None,
+                            notifications: Default::default(),
                         },
                     )]),
                     zoomed: false,
@@ -1877,6 +1894,7 @@ mod tests {
                     root_pane: Some(0),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,
@@ -2083,6 +2101,39 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn restore_preserves_notification_mutes() {
+        use crate::api::schema::{PaneNotifications, WorkspaceNotifications};
+
+        let (mut snapshot, _history) = snapshot_with_saved_pane_history();
+        snapshot.workspaces[0].notifications = WorkspaceNotifications::Off;
+        for pane in snapshot.workspaces[0].tabs[0].panes.values_mut() {
+            pane.notifications = PaneNotifications::On;
+        }
+        let (events, _events_rx) = mpsc::channel(8);
+
+        let (workspaces, _terminals, runtimes) = restore(
+            &snapshot,
+            None,
+            5,
+            40,
+            0,
+            test_restore_shell(),
+            crate::config::ShellModeConfig::NonLogin,
+            false,
+            events,
+            Arc::new(Notify::new()),
+            Arc::new(RenderSignal::new()),
+        );
+
+        assert_eq!(workspaces[0].notifications, WorkspaceNotifications::Off);
+        let pane = workspaces[0].tabs[0].panes.values().next().unwrap();
+        assert_eq!(pane.notifications, PaneNotifications::On);
+        for runtime in runtimes.values() {
+            let _ = runtime.try_send_bytes(bytes::Bytes::from_static(b"exit\n"));
+        }
+    }
+
+    #[tokio::test]
     async fn restore_without_history_snapshot_keeps_pane_contents_empty() {
         let (snapshot, _history) = snapshot_with_saved_pane_history();
         let (events, _events_rx) = mpsc::channel(8);
@@ -2176,6 +2227,7 @@ mod tests {
                 agent_session: None,
                 agent_resume: None,
                 launch_argv: None,
+                notifications: Default::default(),
             },
         );
         let mut history = SessionHistorySnapshot {
@@ -2217,6 +2269,7 @@ mod tests {
                     root_pane: Some(0),
                 }],
                 active_tab: 0,
+                notifications: Default::default(),
             }],
             active: Some(0),
             selected: 0,

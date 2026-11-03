@@ -66,6 +66,7 @@ operations::define_operations! {
     WorkspaceMove(WorkspaceMoveParams) => "workspace.move", true, true;
     WorkspaceMoveBlock(WorkspaceMoveBlockParams) => "workspace.move_block", true, true;
     WorkspaceReportMetadata(WorkspaceReportMetadataParams) => "workspace.report_metadata", true, false;
+    WorkspaceNotificationsSet(WorkspaceNotificationsSetParams) => "workspace.notifications.set", false, false;
     WorkspaceClose(WorkspaceCloseParams) => "workspace.close", true, true;
     WorktreeList(WorktreeListParams) => "worktree.list", false, true;
     WorktreeCreate(WorktreeCreateParams) => "worktree.create", true, true;
@@ -114,6 +115,7 @@ operations::define_operations! {
     PaneGet(PaneTarget) => "pane.get", false, false;
     PaneFocus(PaneTarget) => "pane.focus", true, true;
     PaneInputSet(PaneInputSetParams) => "pane.input.set", true, true;
+    PaneNotificationsSet(PaneNotificationsSetParams) => "pane.notifications.set", false, false;
     PaneLinkActivate(PaneLinkActivateParams) => "pane.link.activate", false, true;
     PaneLinkResolve(PaneLinkActivateParams) => "pane.link.resolve", false, true;
     PaneRename(PaneRenameParams) => "pane.rename", true, true;

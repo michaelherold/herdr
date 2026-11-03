@@ -1,6 +1,12 @@
 use super::*;
 
 impl HeadlessServer {
+    pub(super) fn agent_notifications_muted(&self, pane_id: crate::layout::PaneId) -> bool {
+        self.app.find_pane(pane_id).is_some_and(|(ws_idx, _)| {
+            self.app.state.workspaces[ws_idx].agent_notifications_muted(pane_id)
+        })
+    }
+
     fn pane_effective_state(&self, pane_id: crate::layout::PaneId) -> crate::detect::AgentState {
         self.app
             .state
@@ -55,6 +61,9 @@ impl HeadlessServer {
         let Some(workspace) = self.app.state.workspaces.get(ws_idx) else {
             return false;
         };
+        if workspace.agent_notifications_muted(pane_id) {
+            return false;
+        }
         let Some(tab_idx) = workspace.find_tab_index_for_pane(pane_id) else {
             return false;
         };
@@ -112,7 +121,9 @@ impl HeadlessServer {
         &mut self,
         update: &crate::app::actions::PaneStateUpdate,
     ) {
-        if self.app.state.toast_config.delay_seconds != 0 {
+        if self.app.state.toast_config.delay_seconds != 0
+            || self.agent_notifications_muted(update.pane_id)
+        {
             return;
         }
 
@@ -355,6 +366,7 @@ impl HeadlessServer {
                 let suppress_completion = pane_updates
                     .iter()
                     .any(|update| update.pane_id == pane_id_val && update.suppress_completion);
+                let muted = self.agent_notifications_muted(pane_id_val);
                 for update in pane_updates
                     .iter()
                     .filter(|update| update.pane_id == pane_id_val)
@@ -379,6 +391,7 @@ impl HeadlessServer {
                 let next_state = self.pane_effective_state(pane_id_val);
 
                 if !suppress_completion
+                    && !muted
                     && self.app.state.toast_config.delay_seconds == 0
                     && self.app.state.sound.allows(agent_val)
                 {
@@ -396,6 +409,7 @@ impl HeadlessServer {
                 }
 
                 let toast_msg = if !suppress_completion
+                    && !muted
                     && self.app.state.toast_config.delay_seconds == 0
                     && should_forward_toast_to_clients(self.app.state.toast_config.delivery)
                 {
@@ -448,6 +462,7 @@ impl HeadlessServer {
                 let suppress_completion = pane_updates
                     .iter()
                     .any(|update| update.pane_id == pane_id_val && update.suppress_completion);
+                let muted = self.agent_notifications_muted(pane_id_val);
                 for update in pane_updates
                     .iter()
                     .filter(|update| update.pane_id == pane_id_val)
@@ -473,6 +488,7 @@ impl HeadlessServer {
                 let next_state = self.pane_effective_state(pane_id_val);
 
                 if !suppress_completion
+                    && !muted
                     && self.app.state.toast_config.delay_seconds == 0
                     && self.app.state.sound.allows(agent_val)
                 {
@@ -490,6 +506,7 @@ impl HeadlessServer {
                 }
 
                 let toast_msg = if !suppress_completion
+                    && !muted
                     && self.app.state.toast_config.delay_seconds == 0
                     && should_forward_toast_to_clients(self.app.state.toast_config.delivery)
                 {

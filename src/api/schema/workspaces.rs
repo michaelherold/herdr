@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::common::AgentStatus;
-use crate::cli::projection::{cli_params, Field};
+use crate::cli::projection::{cli_params, Field, Input};
 use crate::cli::workspace_bindings as bindings;
 
 cli_params! {
@@ -44,6 +44,36 @@ cli_params! {
         pub workspace_id: String => Field::new(String::new())
             .input(bindings::workspace_id().value_name("WORKSPACE_ID")),
         pub label: String => Field::new(String::new()).input(bindings::label()),
+    }
+}
+
+/// Whether agent notifications from a workspace's panes are delivered.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceNotifications {
+    /// Deliver notifications under the global settings.
+    #[default]
+    On,
+    /// Mute notifications from panes that follow the workspace setting.
+    Off,
+}
+
+impl WorkspaceNotifications {
+    pub(crate) fn is_on(&self) -> bool {
+        *self == Self::On
+    }
+}
+
+cli_params! {
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct WorkspaceNotificationsSetParams => WorkspaceNotificationsProjection {
+        pub workspace_id: String => Field::new(String::new())
+            .input(bindings::workspace_id().value_name("WORKSPACE_ID")),
+        pub notifications: WorkspaceNotifications => Field::new(WorkspaceNotifications::On)
+            .input(Input::flag("on", |slot, _| { *slot = WorkspaceNotifications::On; Ok(()) }).help("Deliver notifications under the global settings"))
+            .input(Input::flag("off", |slot, _| { *slot = WorkspaceNotifications::Off; Ok(()) }).help("Mute panes that follow the workspace setting")),
     }
 }
 
@@ -94,6 +124,8 @@ pub struct WorkspaceInfo {
     pub tokens: HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub worktree: Option<WorkspaceWorktreeInfo>,
+    #[serde(default, skip_serializing_if = "WorkspaceNotifications::is_on")]
+    pub notifications: WorkspaceNotifications,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
